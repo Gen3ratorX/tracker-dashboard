@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GPS Tracker</title>
+  <title>Node GPS Tracker</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0f1117; color:#fff; height:100vh; display:flex; flex-direction:column; }
@@ -31,22 +31,9 @@
     .btn { background:#2a2d3a; border:none; color:#aaa; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; transition:all 0.2s; }
     .btn:hover { background:#333; color:#fff; }
     .btn.active { background:#0a2e1a; color:#00c853; }
-    .modal-overlay { display:none; position:fixed; inset:0; background:#000b; z-index:100; align-items:center; justify-content:center; }
-    .modal-overlay.show { display:flex; }
-    .modal { background:#1a1d27; border:1px solid #2a2d3a; border-radius:16px; padding:28px; width:440px; max-width:92vw; }
-    .modal h2 { font-size:17px; margin-bottom:6px; }
-    .modal p { font-size:12px; color:#666; margin-bottom:20px; }
-    .field { margin-bottom:14px; }
-    .field label { display:block; font-size:11px; color:#666; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.6px; }
-    .field input { width:100%; background:#0f1117; border:1px solid #2a2d3a; border-radius:8px; padding:10px 14px; color:#fff; font-size:13px; outline:none; transition:border 0.2s; font-family:monospace; }
-    .field input:focus { border-color:#00c853; }
-    .field .hint { font-size:11px; color:#555; margin-top:4px; }
-    .modal-btns { display:flex; gap:10px; margin-top:20px; }
-    .btn-primary { flex:1; background:linear-gradient(135deg,#00c853,#00897b); border:none; color:#fff; padding:12px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
-    .btn-secondary { background:#2a2d3a; border:none; color:#aaa; padding:12px 20px; border-radius:8px; cursor:pointer; font-size:13px; }
-    .header-right { display:flex; gap:8px; align-items:center; }
+    .header-right { display:flex; gap:12px; align-items:center; }
     #last-update { font-size:12px; color:#555; }
-    .live-marker { width:16px; height:16px; background:#00c853; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 4px #00c85344; animation:ripple 1.5s infinite; position:absolute; }
+    .live-marker { width:16px; height:16px; background:#00c853; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 4px #00c85344; animation:ripple 1.5s infinite; position:absolute; z-index: 5;}
     @keyframes ripple { 0%{box-shadow:0 0 0 0 #00c85366} 100%{box-shadow:0 0 0 16px #00c85300} }
     .mock-roads { position:absolute; inset:0; pointer-events:none; }
     .alert-toast { position:fixed; top:70px; right:20px; background:#1a1d27; border:1px solid #00c853; border-radius:12px; padding:12px 18px; font-size:13px; color:#00c853; z-index:200; transform:translateX(200%); transition:transform 0.3s; max-width:280px; }
@@ -58,15 +45,15 @@
 <header>
   <div class="logo">
     <div class="logo-icon">📍</div>
-    GPS Tracker
+    Node GPS Tracker
   </div>
   <div class="header-right">
     <span id="last-update">No data yet</span>
     <button class="btn" id="trailBtn" onclick="toggleTrail()">🛤 Trail OFF</button>
-    <button class="btn" onclick="showConfig()">⚙ Configure</button>
-    <div class="status-pill" id="statusPill">
+    <a href="#" id="mapsLink" target="_blank" class="btn">🗺 Open in Google Maps</a>
+    <div class="status-pill offline" id="statusPill">
       <div class="dot" id="statusDot"></div>
-      <span id="statusText">Not configured</span>
+      <span id="statusText">Connecting...</span>
     </div>
   </div>
 </header>
@@ -88,10 +75,10 @@
     </svg>
     <div class="map-center" id="mapCenter">
       <div class="map-pin">📍</div>
-      <div style="color:#444; font-size:13px;">Configure Firebase to see live location</div>
-      <div style="color:#333; font-size:12px; margin-top:4px;">Click ⚙ Configure above</div>
+      <div style="color:#444; font-size:13px;">Waiting for first GPS coordinate...</div>
     </div>
   </div>
+  
   <div class="info-panel">
     <div class="info-item">
       <div class="info-value" id="speedVal" style="color:#00c853">—</div>
@@ -117,191 +104,105 @@
 
 <div class="alert-toast" id="alertToast">🚨 Movement detected!</div>
 
-<!-- Config Modal -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
-    <h2>🔧 Firebase Configuration</h2>
-    <p>Get your URL from Firebase Console → Realtime Database</p>
-    <div class="field">
-      <label>Firebase Database URL</label>
-      <input type="text" id="fbUrl" placeholder="gps-tracker-xxxxx-default-rtdb.firebaseio.com"/>
-      <div class="hint">Don't include https:// or trailing slash</div>
-    </div>
-    <div class="field">
-      <label>Data Path</label>
-      <input type="text" id="fbPath" value="/tracker/location"/>
-      <div class="hint">Must match FIREBASE_PATH in your ESP32 code</div>
-    </div>
-    <div class="field">
-      <label>Google Maps API Key <span style="color:#444">(optional)</span></label>
-      <input type="text" id="mapsKey" placeholder="AIzaSy... — leave blank to use OpenStreetMap"/>
-    </div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="hideConfig()">Cancel</button>
-      <button class="btn-primary" onclick="saveConfig()">💾 Save & Connect</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
 <script>
 // ── State ─────────────────────────────────────────────────
-let trailOn=false, trailPts=[], lastPos=null;
-let cfg = {
-  fbUrl:  localStorage.getItem('fbUrl')||'',
-  fbPath: localStorage.getItem('fbPath')||'/tracker/location',
-  mapsKey:localStorage.getItem('mapsKey')||''
-};
+let trailOn = false, lastPos = null;
 
-// ── Boot ──────────────────────────────────────────────────
-window.onload = () => {
-  if(cfg.fbUrl){
-    document.getElementById('fbUrl').value   = cfg.fbUrl;
-    document.getElementById('fbPath').value  = cfg.fbPath;
-    document.getElementById('mapsKey').value = cfg.mapsKey;
-    connectFirebase();
-  } else {
-    showConfig();
-  }
-};
+// ── Polling Node Server ───────────────────────────────────
+async function fetchLocation() {
+    try {
+        const response = await fetch('/api/location');
+        const data = await response.json();
 
-// ── Firebase ──────────────────────────────────────────────
-function connectFirebase(){
-  setStatus('waiting','Connecting...');
-  try {
-    let app;
-    try { app = firebase.app(); }
-    catch(e){ app = firebase.initializeApp({ databaseURL:'https://'+cfg.fbUrl }); }
-
-    firebase.database(app).ref(cfg.fbPath).on('value', snap => {
-      const d = snap.val();
-      if(!d){ setStatus('waiting','Waiting for GPS fix...'); return; }
-
-      const lat = parseFloat(d.lat);
-      const lng = parseFloat(d.lng);
-      const spd = parseFloat(d.spd)||0;
-      const sats= parseInt(d.sats)||0;
-      if(isNaN(lat)||isNaN(lng)) return;
-
-      updateUI(lat, lng, spd, sats);
-      setStatus('online','● Live');
-      document.getElementById('last-update').textContent = 'Updated '+new Date().toLocaleTimeString();
-
-    }, err => setStatus('offline','DB Error'));
-
-    setStatus('waiting','Waiting for GPS...');
-  } catch(e){
-    setStatus('offline','Firebase Error');
-    console.error(e);
-  }
+        if (data.lat !== 0 && data.lng !== 0) {
+            updateUI(data.lat, data.lng, data.spd, data.sats);
+            setStatus('online', '● Server Live');
+            document.getElementById('last-update').textContent = 'Updated: ' + data.time;
+        } else {
+            setStatus('offline', 'Awaiting GPS Fix');
+        }
+    } catch (error) {
+        setStatus('offline', 'Server Offline');
+        console.error("Fetch error:", error);
+    }
 }
 
+// Start polling every 5 seconds
+setInterval(fetchLocation, 5000);
+fetchLocation();
+
 // ── UI Update ─────────────────────────────────────────────
-function updateUI(lat, lng, spd, sats){
-  document.getElementById('speedVal').textContent = spd.toFixed(0);
+function updateUI(lat, lng, spd, sats) {
+  document.getElementById('speedVal').textContent = spd.toFixed(1);
   document.getElementById('satsVal').textContent  = sats;
   document.getElementById('latVal').textContent   = lat.toFixed(6)+'°';
   document.getElementById('lngVal').textContent   = lng.toFixed(6)+'°';
 
-  // Accuracy indicator
+  document.getElementById('mapsLink').href = `https://www.google.com/maps?q=$${lat},${lng}`;
+
   const acc = sats >= 8 ? 'High' : sats >= 5 ? 'Med' : 'Low';
   const accCol = sats >= 8 ? '#00c853' : sats >= 5 ? '#ffab00' : '#ff4444';
   document.getElementById('hdopVal').textContent = acc;
   document.getElementById('hdopVal').style.color = accCol;
 
-  // Update or create marker on mock map
-  updateMarker(lat, lng);
+  updateMarker();
 
-  // Check movement
   if(lastPos){
-    const d = Math.abs(lat-lastPos.lat)+Math.abs(lng-lastPos.lng);
-    if(d > 0.0005) showAlert('🚨 Movement detected! '+lat.toFixed(5)+', '+lng.toFixed(5));
+    const d = Math.abs(lat - lastPos.lat) + Math.abs(lng - lastPos.lng);
+    if(d > 0.0005) showAlert('🚨 Movement detected!');
   }
   lastPos = {lat, lng};
 
-  // Trail
-  if(trailOn) addTrailDot(lat, lng);
+  if(trailOn) addTrailDot();
 }
 
-// ── Mock map marker (when no Google Maps key) ─────────────
+// ── Mock map marker ───────────────────────────────────────
 let markerEl = null;
-function updateMarker(lat, lng){
+function updateMarker(){
   const wrap = document.getElementById('mapWrap');
-  // Place marker in center of the placeholder map
   if(!markerEl){
     markerEl = document.createElement('div');
     markerEl.className = 'live-marker';
-    markerEl.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;';
+    markerEl.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
     wrap.appendChild(markerEl);
-    document.getElementById('mapCenter').innerHTML =
-      '<div style="color:#555;font-size:12px;margin-top:180px">'+
-      'Live tracking active — add Google Maps API key for full map</div>';
+    document.getElementById('mapCenter').style.display = 'none'; // Hide text when active
   }
-  // Subtle random drift to show "movement"
 }
 
 // ── Trail dots ─────────────────────────────────────────────
 let trailContainer = null;
-function addTrailDot(lat, lng){
+function addTrailDot(){
   if(!trailContainer){
     trailContainer = document.createElement('div');
     trailContainer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:4;';
     document.getElementById('mapWrap').appendChild(trailContainer);
   }
   const dot = document.createElement('div');
-  dot.style.cssText = 'position:absolute;width:6px;height:6px;background:#00c85388;border-radius:50%;top:calc(50% + '+(Math.random()*20-10)+'px);left:calc(50% + '+(Math.random()*20-10)+'px);';
+  dot.style.cssText = 'position:absolute;width:6px;height:6px;background:#00c85388;border-radius:50%;top:calc(50% + '+(Math.random()*40-20)+'px);left:calc(50% + '+(Math.random()*40-20)+'px);';
   trailContainer.appendChild(dot);
 }
 
-// ── Trail toggle ──────────────────────────────────────────
 function toggleTrail(){
-  trailOn=!trailOn;
-  const b=document.getElementById('trailBtn');
-  b.textContent=trailOn?'🛤 Trail ON':'🛤 Trail OFF';
-  b.className=trailOn?'btn active':'btn';
-  if(!trailOn && trailContainer){ trailContainer.innerHTML=''; }
+  trailOn = !trailOn;
+  const b = document.getElementById('trailBtn');
+  b.textContent = trailOn ? '🛤 Trail ON' : '🛤 Trail OFF';
+  b.className = trailOn ? 'btn active' : 'btn';
+  if(!trailOn && trailContainer) trailContainer.innerHTML=''; 
 }
 
-// ── Status ────────────────────────────────────────────────
-function setStatus(s,t){
-  const pill=document.getElementById('statusPill');
-  const dot=document.getElementById('statusDot');
-  pill.className='status-pill '+(s==='online'?'online':s==='offline'?'offline':'');
-  dot.className='dot'+(s==='online'?' pulse':'');
-  document.getElementById('statusText').textContent=t;
+function setStatus(state, text){
+  const pill = document.getElementById('statusPill');
+  const dot = document.getElementById('statusDot');
+  pill.className = 'status-pill ' + state;
+  dot.className = 'dot' + (state === 'online' ? ' pulse' : '');
+  document.getElementById('statusText').textContent = text;
 }
 
-// ── Alert toast ───────────────────────────────────────────
 function showAlert(msg){
-  const t=document.getElementById('alertToast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),4000);
-}
-
-// ── Config modal ──────────────────────────────────────────
-function showConfig(){ document.getElementById('modalOverlay').classList.add('show'); }
-function hideConfig(){ document.getElementById('modalOverlay').classList.remove('show'); }
-
-function saveConfig(){
-  const url  = document.getElementById('fbUrl').value.trim().replace('https://','').replace(/\/$/,'');
-  const path = document.getElementById('fbPath').value.trim();
-  const key  = document.getElementById('mapsKey').value.trim();
-  if(!url){ alert('Please enter your Firebase Database URL'); return; }
-  cfg = { fbUrl:url, fbPath:path||'/tracker/location', mapsKey:key };
-  localStorage.setItem('fbUrl',  cfg.fbUrl);
-  localStorage.setItem('fbPath', cfg.fbPath);
-  localStorage.setItem('mapsKey',cfg.mapsKey);
-  hideConfig();
-
-  // Reload Maps if key provided
-  if(key && !window._mapsLoaded){
-    const s=document.createElement('script');
-    s.src=`https://maps.googleapis.com/maps/api/js?key=${key}`;
-    document.head.appendChild(s);
-    window._mapsLoaded=true;
-  }
-  connectFirebase();
+  const t = document.getElementById('alertToast');
+  t.textContent = msg; 
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
 }
 </script>
 </body>
