@@ -4,40 +4,48 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Node GPS Tracker</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0f1117; color:#fff; height:100vh; display:flex; flex-direction:column; }
-    header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#1a1d27; border-bottom:1px solid #2a2d3a; flex-shrink:0; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#1a1d27; border-bottom:1px solid #2a2d3a; flex-shrink:0; z-index: 2000; }
     .logo { display:flex; align-items:center; gap:10px; font-size:18px; font-weight:700; }
     .logo-icon { width:32px; height:32px; background:linear-gradient(135deg,#00c853,#00897b); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+    
     .status-pill { display:flex; align-items:center; gap:7px; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; background:#2a2d3a; }
     .status-pill.online  { background:#0a2e1a; color:#00c853; }
     .status-pill.offline { background:#2e0a0a; color:#ff4444; }
     .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
     .dot.pulse { animation:pulse 1.5s infinite; }
     @keyframes pulse { 0%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(1.3)} 100%{opacity:1;transform:scale(1)} }
-    #map-placeholder { flex:1; background:#0d1520; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; color:#333; font-size:14px; }
-    .map-grid { position:absolute; inset:0; background-image: linear-gradient(#1a2030 1px, transparent 1px), linear-gradient(90deg, #1a2030 1px, transparent 1px); background-size:40px 40px; opacity:0.5; }
-    .map-center { position:relative; z-index:1; text-align:center; }
-    .map-pin { font-size:48px; margin-bottom:8px; animation:bounce 2s infinite; }
-    @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-    .info-panel { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); background:#1a1d27ee; backdrop-filter:blur(12px); border:1px solid #2a2d3a; border-radius:16px; padding:16px 24px; display:flex; gap:28px; align-items:center; z-index:10; min-width:380px; box-shadow:0 8px 32px #0008; }
+    
+    /* Info Panel - Increased z-index so it sits above the map */
+    .info-panel { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); background:#1a1d27ee; backdrop-filter:blur(12px); border:1px solid #2a2d3a; border-radius:16px; padding:16px 24px; display:flex; gap:28px; align-items:center; z-index:1000; min-width:380px; box-shadow:0 8px 32px #0008; }
     .info-item { display:flex; flex-direction:column; align-items:center; gap:3px; }
     .info-value { font-size:22px; font-weight:700; }
     .info-label { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:0.8px; }
     .divider { width:1px; height:36px; background:#2a2d3a; }
     .coord-box { font-size:11px; color:#888; text-align:center; line-height:1.8; }
     .coord-box span { color:#ccc; font-family:monospace; }
-    .btn { background:#2a2d3a; border:none; color:#aaa; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; transition:all 0.2s; }
+    
+    .btn { background:#2a2d3a; border:none; color:#aaa; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; transition:all 0.2s; text-decoration: none; display: inline-block;}
     .btn:hover { background:#333; color:#fff; }
     .btn.active { background:#0a2e1a; color:#00c853; }
     .header-right { display:flex; gap:12px; align-items:center; }
     #last-update { font-size:12px; color:#555; }
-    .live-marker { width:16px; height:16px; background:#00c853; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 4px #00c85344; animation:ripple 1.5s infinite; position:absolute; z-index: 5;}
-    @keyframes ripple { 0%{box-shadow:0 0 0 0 #00c85366} 100%{box-shadow:0 0 0 16px #00c85300} }
-    .mock-roads { position:absolute; inset:0; pointer-events:none; }
-    .alert-toast { position:fixed; top:70px; right:20px; background:#1a1d27; border:1px solid #00c853; border-radius:12px; padding:12px 18px; font-size:13px; color:#00c853; z-index:200; transform:translateX(200%); transition:transform 0.3s; max-width:280px; }
+    
+    .alert-toast { position:fixed; top:70px; right:20px; background:#1a1d27; border:1px solid #00c853; border-radius:12px; padding:12px 18px; font-size:13px; color:#00c853; z-index:2000; transform:translateX(200%); transition:transform 0.3s; max-width:280px; }
     .alert-toast.show { transform:translateX(0); }
+
+    /* Map Styling */
+    #map { position: absolute; inset: 0; z-index: 1; background: #0f1117; }
+    
+    /* Magic CSS to make OpenStreetMap dark mode to match your dashboard! */
+    .leaflet-tile {
+        filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    }
   </style>
 </head>
 <body>
@@ -59,25 +67,7 @@
 </header>
 
 <div style="position:relative; flex:1; overflow:hidden;" id="mapWrap">
-  <div id="map-placeholder">
-    <div class="map-grid"></div>
-    <svg class="mock-roads" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
-      <line x1="0" y1="250" x2="800" y2="250" stroke="#1e2535" stroke-width="18"/>
-      <line x1="0" y1="250" x2="800" y2="250" stroke="#232840" stroke-width="6"/>
-      <line x1="400" y1="0" x2="400" y2="500" stroke="#1e2535" stroke-width="14"/>
-      <line x1="400" y1="0" x2="400" y2="500" stroke="#232840" stroke-width="5"/>
-      <line x1="0" y1="150" x2="800" y2="350" stroke="#1a1f30" stroke-width="10"/>
-      <line x1="100" y1="0" x2="700" y2="500" stroke="#1a1f30" stroke-width="8"/>
-      <rect x="300" y="170" width="80" height="60" rx="4" fill="#161924"/>
-      <rect x="420" y="170" width="60" height="50" rx="4" fill="#161924"/>
-      <rect x="300" y="280" width="70" height="55" rx="4" fill="#161924"/>
-      <rect x="430" y="275" width="90" height="65" rx="4" fill="#161924"/>
-    </svg>
-    <div class="map-center" id="mapCenter">
-      <div class="map-pin">📍</div>
-      <div style="color:#444; font-size:13px;">Waiting for first GPS coordinate...</div>
-    </div>
-  </div>
+  <div id="map"></div>
   
   <div class="info-panel">
     <div class="info-item">
@@ -104,9 +94,24 @@
 
 <div class="alert-toast" id="alertToast">🚨 Movement detected!</div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
+// ── Map Initialization ────────────────────────────────────
+let map = L.map('map').setView([0, 0], 2); // Start zoomed out
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+let marker = L.marker([0, 0]); // We will add it to the map once we get the first coordinate
+let polyline = L.polyline([], {color: '#00c853', weight: 4}).addTo(map);
+let mapInitialized = false;
+
 // ── State ─────────────────────────────────────────────────
-let trailOn = false, lastPos = null;
+let trailOn = false;
+let lastPos = null;
+let trailHistory = [];
 
 // ── Polling Node Server ───────────────────────────────────
 async function fetchLocation() {
@@ -133,63 +138,61 @@ fetchLocation();
 
 // ── UI Update ─────────────────────────────────────────────
 function updateUI(lat, lng, spd, sats) {
+  // Update Text
   document.getElementById('speedVal').textContent = spd.toFixed(1);
   document.getElementById('satsVal').textContent  = sats;
   document.getElementById('latVal').textContent   = lat.toFixed(6)+'°';
   document.getElementById('lngVal').textContent   = lng.toFixed(6)+'°';
 
-  document.getElementById('mapsLink').href = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  // The perfectly formatted Google Maps link!
+  document.getElementById('mapsLink').href = `https://www.google.com/maps/search/?api=1&query=$${lat},${lng}`;
 
   const acc = sats >= 8 ? 'High' : sats >= 5 ? 'Med' : 'Low';
   const accCol = sats >= 8 ? '#00c853' : sats >= 5 ? '#ffab00' : '#ff4444';
   document.getElementById('hdopVal').textContent = acc;
   document.getElementById('hdopVal').style.color = accCol;
 
-  updateMarker();
+  // Update Real Map
+  const newLatLng = [lat, lng];
+  
+  if (!mapInitialized) {
+      marker.setLatLng(newLatLng).addTo(map);
+      map.setView(newLatLng, 16); // Zoom in close to the car on the first ping
+      mapInitialized = true;
+  } else {
+      marker.setLatLng(newLatLng);
+      // Smoothly pan map to follow the car if it moves
+      map.panTo(newLatLng);
+  }
 
+  // Handle Trail
+  if (trailOn) {
+      trailHistory.push(newLatLng);
+      polyline.setLatLngs(trailHistory);
+  }
+
+  // Handle Alerts
   if(lastPos){
     const d = Math.abs(lat - lastPos.lat) + Math.abs(lng - lastPos.lng);
     if(d > 0.0005) showAlert('🚨 Movement detected!');
   }
   lastPos = {lat, lng};
-
-  if(trailOn) addTrailDot();
 }
 
-// ── Mock map marker ───────────────────────────────────────
-let markerEl = null;
-function updateMarker(){
-  const wrap = document.getElementById('mapWrap');
-  if(!markerEl){
-    markerEl = document.createElement('div');
-    markerEl.className = 'live-marker';
-    markerEl.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);';
-    wrap.appendChild(markerEl);
-    document.getElementById('mapCenter').style.display = 'none'; // Hide text when active
-  }
-}
-
-// ── Trail dots ─────────────────────────────────────────────
-let trailContainer = null;
-function addTrailDot(){
-  if(!trailContainer){
-    trailContainer = document.createElement('div');
-    trailContainer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:4;';
-    document.getElementById('mapWrap').appendChild(trailContainer);
-  }
-  const dot = document.createElement('div');
-  dot.style.cssText = 'position:absolute;width:6px;height:6px;background:#00c85388;border-radius:50%;top:calc(50% + '+(Math.random()*40-20)+'px);left:calc(50% + '+(Math.random()*40-20)+'px);';
-  trailContainer.appendChild(dot);
-}
-
+// ── Trail Logic ───────────────────────────────────────────
 function toggleTrail(){
   trailOn = !trailOn;
   const b = document.getElementById('trailBtn');
   b.textContent = trailOn ? '🛤 Trail ON' : '🛤 Trail OFF';
   b.className = trailOn ? 'btn active' : 'btn';
-  if(!trailOn && trailContainer) trailContainer.innerHTML=''; 
+  
+  if(!trailOn) {
+      trailHistory = []; // Clear the memory
+      polyline.setLatLngs([]); // Erase the line from the map
+  }
 }
 
+// ── UI Helpers ────────────────────────────────────────────
 function setStatus(state, text){
   const pill = document.getElementById('statusPill');
   const dot = document.getElementById('statusDot');
