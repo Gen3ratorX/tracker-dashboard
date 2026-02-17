@@ -9,24 +9,26 @@
 
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0f1117; color:#fff; height:100vh; display:flex; flex-direction:column; }
-    header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#1a1d27; border-bottom:1px solid #2a2d3a; flex-shrink:0; z-index: 2000; }
+    
+    /* Base Dark Mode (Default) */
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#0f1117; color:#fff; height:100vh; display:flex; flex-direction:column; transition: background 0.3s, color 0.3s; }
+    header { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; background:#1a1d27; border-bottom:1px solid #2a2d3a; flex-shrink:0; z-index: 2000; transition: background 0.3s, border-color 0.3s; }
     .logo { display:flex; align-items:center; gap:10px; font-size:18px; font-weight:700; }
     .logo-icon { width:32px; height:32px; background:linear-gradient(135deg,#00c853,#00897b); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
     
-    .status-pill { display:flex; align-items:center; gap:7px; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; background:#2a2d3a; }
+    .status-pill { display:flex; align-items:center; gap:7px; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; background:#2a2d3a; transition: background 0.3s; }
     .status-pill.online  { background:#0a2e1a; color:#00c853; }
     .status-pill.offline { background:#2e0a0a; color:#ff4444; }
     .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
     .dot.pulse { animation:pulse 1.5s infinite; }
     @keyframes pulse { 0%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(1.3)} 100%{opacity:1;transform:scale(1)} }
     
-    /* Info Panel - Increased z-index so it sits above the map */
-    .info-panel { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); background:#1a1d27ee; backdrop-filter:blur(12px); border:1px solid #2a2d3a; border-radius:16px; padding:16px 24px; display:flex; gap:28px; align-items:center; z-index:1000; min-width:380px; box-shadow:0 8px 32px #0008; }
+    /* Info Panel */
+    .info-panel { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); background:#1a1d27ee; backdrop-filter:blur(12px); border:1px solid #2a2d3a; border-radius:16px; padding:16px 24px; display:flex; gap:28px; align-items:center; z-index:1000; min-width:380px; box-shadow:0 8px 32px #0008; transition: background 0.3s, border-color 0.3s; }
     .info-item { display:flex; flex-direction:column; align-items:center; gap:3px; }
     .info-value { font-size:22px; font-weight:700; }
     .info-label { font-size:11px; color:#666; text-transform:uppercase; letter-spacing:0.8px; }
-    .divider { width:1px; height:36px; background:#2a2d3a; }
+    .divider { width:1px; height:36px; background:#2a2d3a; transition: background 0.3s; }
     .coord-box { font-size:11px; color:#888; text-align:center; line-height:1.8; }
     .coord-box span { color:#ccc; font-family:monospace; }
     
@@ -34,7 +36,7 @@
     .btn:hover { background:#333; color:#fff; }
     .btn.active { background:#0a2e1a; color:#00c853; }
     .header-right { display:flex; gap:12px; align-items:center; }
-    #last-update { font-size:12px; color:#555; }
+    #last-update { font-size:12px; color:#555; transition: color 0.3s; }
     
     .alert-toast { position:fixed; top:70px; right:20px; background:#1a1d27; border:1px solid #00c853; border-radius:12px; padding:12px 18px; font-size:13px; color:#00c853; z-index:2000; transform:translateX(200%); transition:transform 0.3s; max-width:280px; }
     .alert-toast.show { transform:translateX(0); }
@@ -42,10 +44,31 @@
     /* Map Styling */
     #map { position: absolute; inset: 0; z-index: 1; background: #0f1117; }
     
-    /* Magic CSS to make OpenStreetMap dark mode to match your dashboard! */
-    .leaflet-tile {
-        filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-    }
+    /* Dark Mode Map Filter */
+    .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); transition: filter 0.5s ease; }
+    
+    /* Custom Car Pin CSS */
+    .car-pin { font-size: 28px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5)); transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; }
+
+    /* =========================================================
+       LIGHT MODE OVERRIDES
+       ========================================================= */
+    body.light-mode { background: #f4f6f8; color: #222; }
+    body.light-mode header { background: #ffffff; border-bottom: 1px solid #e0e4e8; }
+    body.light-mode .info-panel { background: rgba(255, 255, 255, 0.95); border: 1px solid #e0e4e8; box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+    body.light-mode .btn { background: #eef0f4; color: #444; }
+    body.light-mode .btn:hover { background: #dde0e6; color: #111; }
+    body.light-mode .btn.active { background: #e6f4ea; color: #137333; }
+    body.light-mode .status-pill { background: #eef0f4; color: #444; }
+    body.light-mode .status-pill.online { background: #e6f4ea; color: #137333; }
+    body.light-mode .divider { background: #e0e4e8; }
+    body.light-mode .info-label { color: #888; }
+    body.light-mode .coord-box { color: #666; }
+    body.light-mode .coord-box span { color: #222; }
+    body.light-mode #last-update { color: #888; }
+    /* Remove the invert filter to show the standard bright map */
+    body.light-mode .leaflet-tile { filter: none; }
+    body.light-mode .alert-toast { background: #fff; box-shadow: 0 4px 12px rgba(0,200,83,0.2); }
   </style>
 </head>
 <body>
@@ -57,6 +80,9 @@
   </div>
   <div class="header-right">
     <span id="last-update">No data yet</span>
+    
+    <button class="btn" id="themeBtn" onclick="toggleTheme()">☀️ Light</button>
+    
     <button class="btn" id="trailBtn" onclick="toggleTrail()">🛤 Trail OFF</button>
     <a href="#" id="mapsLink" target="_blank" class="btn">🗺 Open in Google Maps</a>
     <div class="status-pill offline" id="statusPill">
@@ -97,21 +123,46 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+// ── Custom Car Icon ───────────────────────────────────────
+const carIcon = L.divIcon({
+    html: '<div class="car-pin">🚘</div>',
+    className: '', // Removes default Leaflet styling
+    iconSize: [32, 32],
+    iconAnchor: [16, 16] // Centers the car precisely on the coordinate
+});
+
 // ── Map Initialization ────────────────────────────────────
-let map = L.map('map').setView([0, 0], 2); // Start zoomed out
+let map = L.map('map').setView([0, 0], 2);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-let marker = L.marker([0, 0]); // We will add it to the map once we get the first coordinate
+// Use the custom car icon!
+let marker = L.marker([0, 0], { icon: carIcon }); 
 let polyline = L.polyline([], {color: '#00c853', weight: 4}).addTo(map);
 let mapInitialized = false;
 
 // ── State ─────────────────────────────────────────────────
 let trailOn = false;
+let isLightMode = false;
 let lastPos = null;
 let trailHistory = [];
+
+// ── Theme Toggle Logic ────────────────────────────────────
+function toggleTheme() {
+    isLightMode = !isLightMode;
+    const body = document.body;
+    const themeBtn = document.getElementById('themeBtn');
+    
+    if (isLightMode) {
+        body.classList.add('light-mode');
+        themeBtn.textContent = '🌙 Dark';
+    } else {
+        body.classList.remove('light-mode');
+        themeBtn.textContent = '☀️ Light';
+    }
+}
 
 // ── Polling Node Server ───────────────────────────────────
 async function fetchLocation() {
@@ -138,30 +189,28 @@ fetchLocation();
 
 // ── UI Update ─────────────────────────────────────────────
 function updateUI(lat, lng, spd, sats) {
-  // Update Text
   document.getElementById('speedVal').textContent = spd.toFixed(1);
   document.getElementById('satsVal').textContent  = sats;
   document.getElementById('latVal').textContent   = lat.toFixed(6)+'°';
   document.getElementById('lngVal').textContent   = lng.toFixed(6)+'°';
 
-  // The perfectly formatted Google Maps link!
-  document.getElementById('mapsLink').href = `https://www.google.com/maps/search/?api=1&query=$${lat},${lng}`;
+  // Fix Google Maps URL format
+  document.getElementById('mapsLink').href = `https://www.google.com/maps?q=$3${lat},${lng}`;
 
   const acc = sats >= 8 ? 'High' : sats >= 5 ? 'Med' : 'Low';
   const accCol = sats >= 8 ? '#00c853' : sats >= 5 ? '#ffab00' : '#ff4444';
   document.getElementById('hdopVal').textContent = acc;
   document.getElementById('hdopVal').style.color = accCol;
 
-  // Update Real Map
+  // Update Map
   const newLatLng = [lat, lng];
   
   if (!mapInitialized) {
       marker.setLatLng(newLatLng).addTo(map);
-      map.setView(newLatLng, 16); // Zoom in close to the car on the first ping
+      map.setView(newLatLng, 16); 
       mapInitialized = true;
   } else {
       marker.setLatLng(newLatLng);
-      // Smoothly pan map to follow the car if it moves
       map.panTo(newLatLng);
   }
 
@@ -171,7 +220,7 @@ function updateUI(lat, lng, spd, sats) {
       polyline.setLatLngs(trailHistory);
   }
 
-  // Handle Alerts
+  // Alerts
   if(lastPos){
     const d = Math.abs(lat - lastPos.lat) + Math.abs(lng - lastPos.lng);
     if(d > 0.0005) showAlert('🚨 Movement detected!');
@@ -187,12 +236,12 @@ function toggleTrail(){
   b.className = trailOn ? 'btn active' : 'btn';
   
   if(!trailOn) {
-      trailHistory = []; // Clear the memory
-      polyline.setLatLngs([]); // Erase the line from the map
+      trailHistory = []; 
+      polyline.setLatLngs([]); 
   }
 }
 
-// ── UI Helpers ────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────
 function setStatus(state, text){
   const pill = document.getElementById('statusPill');
   const dot = document.getElementById('statusDot');
