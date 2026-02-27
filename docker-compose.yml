@@ -1,0 +1,7 @@
+services:
+  tracker-dashboard:
+    container_name: tracker-dashboard
+    image: ${IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3002}:3002"
