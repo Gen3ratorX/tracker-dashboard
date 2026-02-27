@@ -68,6 +68,12 @@ jobs:
           [ -n "$SSH_HOST" ] || { echo "Missing secret: SSH_HOST"; exit 1; }
           [ -n "$SSH_USER" ] || { echo "Missing secret: SSH_USER"; exit 1; }
           [ -n "$SSH_PRIVATE_KEY" ] || { echo "Missing secret: SSH_PRIVATE_KEY"; exit 1; }
+          case "$SSH_HOST" in
+            *://*|*/*)
+              echo "SSH_HOST must be just a hostname or IP (no http://, https://, path, or slash)"
+              exit 1
+              ;;
+          esac
           echo "$SSH_PRIVATE_KEY" | grep -q "PRIVATE KEY" || { echo "SSH_PRIVATE_KEY does not look like a private key"; exit 1; }
 
       - name: Copy project files to server
