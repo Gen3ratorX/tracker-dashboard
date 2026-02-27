@@ -1,7 +1,10 @@
 services:
   tracker-dashboard:
     container_name: tracker-dashboard
-    image: ${IMAGE_TAG}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tracker-dashboard:latest
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3002}:3002"
