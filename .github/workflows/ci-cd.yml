@@ -68,6 +68,7 @@ jobs:
           [ -n "$SSH_HOST" ] || { echo "Missing secret: SSH_HOST"; exit 1; }
           [ -n "$SSH_USER" ] || { echo "Missing secret: SSH_USER"; exit 1; }
           [ -n "$SSH_PRIVATE_KEY" ] || { echo "Missing secret: SSH_PRIVATE_KEY"; exit 1; }
+          echo "$SSH_PRIVATE_KEY" | grep -q "PRIVATE KEY" || { echo "SSH_PRIVATE_KEY does not look like a private key"; exit 1; }
 
       - name: Copy project files to server
         uses: appleboy/scp-action@v0.1.7
@@ -75,6 +76,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: "./*"
           target: "~/tracker-dashboard"
 
@@ -84,6 +86,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             set -e
             cd "$HOME/tracker-dashboard"
