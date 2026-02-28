@@ -63,11 +63,13 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          TRACKER_TOKEN: ${{ secrets.TRACKER_TOKEN }}
         run: |
           set -e
           [ -n "$SSH_HOST" ] || { echo "Missing secret: SSH_HOST"; exit 1; }
           [ -n "$SSH_USER" ] || { echo "Missing secret: SSH_USER"; exit 1; }
           [ -n "$SSH_PRIVATE_KEY" ] || { echo "Missing secret: SSH_PRIVATE_KEY"; exit 1; }
+          [ -n "$TRACKER_TOKEN" ] || { echo "Missing secret: TRACKER_TOKEN"; exit 1; }
           case "$SSH_HOST" in
             *://*|*/*)
               echo "SSH_HOST must be just a hostname or IP (no http://, https://, path, or slash)"
@@ -88,12 +90,20 @@ jobs:
 
       - name: Deploy to server over SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          TRACKER_TOKEN: ${{ secrets.TRACKER_TOKEN }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          envs: TRACKER_TOKEN,CORS_ORIGIN
           script: |
             set -e
             cd "$HOME/tracker-dashboard"
+            cat > .env <<EOF
+            TRACKER_TOKEN=${TRACKER_TOKEN}
+            CORS_ORIGIN=${CORS_ORIGIN}
+            EOF
             docker compose up -d --build --remove-orphans

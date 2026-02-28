@@ -6,5 +6,8 @@ services:
       dockerfile: Dockerfile
     image: tracker-dashboard:latest
     restart: unless-stopped
+    environment:
+      - TRACKER_TOKEN=${TRACKER_TOKEN}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
     ports:
       - "${APP_PORT:-3002}:3002"
