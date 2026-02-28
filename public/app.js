@@ -9,6 +9,7 @@ const state = {
   trailOn: false,
   trailHistory: [],
   mapInitialized: false,
+  autoFollow: true,
   lastPos: null,
   lastReceivedAt: null,
   connectionMode: 'sse',
@@ -28,9 +29,15 @@ const elements = {
   latVal: document.getElementById('latVal'),
   lngVal: document.getElementById('lngVal'),
   trailBtn: document.getElementById('trailBtn'),
+  followBtn: document.getElementById('followBtn'),
+  interactionHint: document.getElementById('interactionHint'),
+  hintCloseBtn: document.getElementById('hintCloseBtn'),
+  transportChip: document.getElementById('transportChip'),
   mapsLink: document.getElementById('mapsLink'),
   alertToast: document.getElementById('alertToast'),
 };
+
+const HINT_DISMISS_KEY = 'trackerHintDismissed';
 
 const carIcon = L.divIcon({
   html: '<div class="car-pin">🚘</div>',
@@ -47,6 +54,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 const marker = L.marker([0, 0], { icon: carIcon });
 const polyline = L.polyline([], { color: '#00c853', weight: 4 }).addTo(map);
+
+map.on('dragstart', () => {
+  state.autoFollow = false;
+  elements.followBtn.textContent = 'Follow OFF';
+  elements.followBtn.classList.remove('active');
+  dismissHint();
+});
 
 function setStatus(stateName, text) {
   elements.statusPill.className = `status-pill ${stateName}`;
@@ -105,7 +119,13 @@ function updateMap(lat, lng) {
     state.mapInitialized = true;
   } else {
     marker.setLatLng(latLng);
-    map.panTo(latLng);
+    if (state.autoFollow) {
+      map.panTo(latLng, {
+        animate: true,
+        duration: 0.75,
+        easeLinearity: 0.25,
+      });
+    }
   }
 
   updateTrail(latLng);
@@ -168,6 +188,7 @@ function startPollingFallback() {
   }
 
   state.connectionMode = nextTransportMode(false);
+  elements.transportChip.textContent = 'Polling';
   pollLatest();
   state.pollingTimer = setInterval(pollLatest, POLLING_MS);
 }
@@ -186,6 +207,7 @@ function connectStream() {
     const stream = new EventSource('/api/location/stream');
     state.stream = stream;
     state.connectionMode = nextTransportMode(true);
+    elements.transportChip.textContent = 'SSE';
 
     stream.addEventListener('location', (event) => {
       try {
@@ -225,8 +247,52 @@ function toggleTrail() {
   }
 }
 
-document.getElementById('trailBtn').addEventListener('click', toggleTrail);
+function toggleFollow() {
+  state.autoFollow = !state.autoFollow;
+  elements.followBtn.textContent = state.autoFollow ? 'Follow ON' : 'Follow OFF';
+  elements.followBtn.className = state.autoFollow ? 'btn active' : 'btn';
 
+  if (state.autoFollow && state.lastPos) {
+    map.panTo([state.lastPos.lat, state.lastPos.lng], { animate: true, duration: 0.7 });
+  }
+}
+
+function dismissHint() {
+  if (!elements.interactionHint) {
+    return;
+  }
+
+  elements.interactionHint.classList.add('hidden');
+  try {
+    window.localStorage.setItem(HINT_DISMISS_KEY, '1');
+  } catch (error) {
+    // Ignore storage errors in private browsing modes.
+  }
+}
+
+function initHint() {
+  if (!elements.interactionHint || !elements.hintCloseBtn) {
+    return;
+  }
+
+  let dismissed = false;
+  try {
+    dismissed = window.localStorage.getItem(HINT_DISMISS_KEY) === '1';
+  } catch (error) {
+    dismissed = false;
+  }
+
+  if (dismissed) {
+    elements.interactionHint.classList.add('hidden');
+  }
+
+  elements.hintCloseBtn.addEventListener('click', dismissHint);
+}
+
+document.getElementById('trailBtn').addEventListener('click', toggleTrail);
+document.getElementById('followBtn').addEventListener('click', toggleFollow);
+
+initHint();
 connectStream();
 pollLatest();
 state.statusTicker = setInterval(renderAge, 1000);
